@@ -64,7 +64,7 @@ Cada concesionaria tiene su **propio proyecto Supabase** (base de datos, storage
 | Estilos | Tailwind CSS |
 | PWA | @angular/pwa |
 | Base de datos | Supabase (PostgreSQL) |
-| Auth | Supabase Auth |
+| Auth | Supabase Auth + WebAuthn (Passkeys) |
 | Storage fotos | Supabase Storage |
 | IA análisis fotos | Google Gemini Flash (tier gratuito) |
 | IA descripción texto | Google Gemini Flash |
@@ -177,16 +177,23 @@ borrador ──→ disponible ──→ reservado ──→ vendido
 ### Pantallas
 
 #### 7.1 Login
-- Email y contraseña via Supabase Auth.
-- Sin registro público (solo el admin crea usuarios desde el panel).
-- Recordar sesión activado por defecto (importante para uso móvil).
+- Email y contraseña via Supabase Auth la **primera vez** solamente.
+- Sin registro público — solo el admin crea usuarios desde Ajustes.
+- Al ingresar por primera vez, la app ofrece registrar huella / Face ID via **WebAuthn (Passkeys)**.
+- Sesión **persistente**: si ya está autenticado, entra directo a la app sin ver el login.
+- Para sesiones expiradas: desbloqueo con biometría (huella/Face ID). Fallback a email + contraseña si el dispositivo no soporta biometría.
+- En la práctica el usuario ve el login una sola vez en la vida.
 
-#### 7.2 Dashboard (home)
-Métricas de un vistazo:
-- Total de autos disponibles
-- Total reservados
-- Total vendidos este mes
-- Acceso rápido a "Cargar auto nuevo"
+#### 7.2 Home (pantalla principal)
+La pantalla principal está optimizada para el flujo diario real:
+**buscar un auto → compartirlo**.
+
+Estructura:
+- Buscador grande y prominente al tope (busca por marca, modelo o año en tiempo real).
+- Lista de autos debajo del buscador, ordenados por más recientes primero.
+- Chips de filtro rápido por estado: Todos / Disponibles / Reservados / Pausados.
+- Botón flotante (+) siempre visible para agregar auto nuevo.
+- Las estadísticas (vendidos, reservados, etc.) son secundarias: accesibles desde Ajustes, no en el home.
 
 #### 7.3 Lista de autos
 - Listado con foto de portada, marca, modelo, año, precio y badge de estado.
@@ -498,4 +505,4 @@ En producción se usan las variables de entorno del hosting correspondiente.
 ---
 
 *Última actualización: Mayo 2026*
-*Versión: 1.0 — Demo inicial*
+*Versión: 1.1 — Auth biométrica + home rediseñado*

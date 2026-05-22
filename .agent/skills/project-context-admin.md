@@ -11,12 +11,18 @@ The owner receives constant WhatsApp queries about cars and wastes time manually
 - **Admin (owner):** full access including settings, user management, delete cars.
 - **Vendedor (seller):** can upload, edit, change status, and share cars. Cannot delete or manage users.
 
+## Auth
+- Email + password on first login only. Session is persistent — user almost never sees the login screen again.
+- WebAuthn (Passkeys) for biometric unlock (fingerprint / Face ID) on session expiry.
+- Fallback to email + password if device doesn't support biometrics.
+- No public registration. Admin creates users from Settings.
+
 ## Core features
-1. **Dashboard** — stock summary: available, reserved, sold this month.
-2. **Car list** — filterable by status, inline price edit, quick status change.
+1. **Home** — large search bar + car list + quick status filter chips. This is the daily-use screen.
+2. **Car list** — filterable by status, inline price edit, quick status change via swipe/context menu.
 3. **Upload car with AI** — photo → Gemini analysis → adaptive questionnaire → publish.
 4. **Share car** — generates a WhatsApp-ready message with the public listing URL.
-5. **Settings** — WhatsApp number, currencies, exchange rate, user management.
+5. **Settings** — WhatsApp number, currencies, exchange rate, user management, stock stats.
 
 ## Car statuses
 `borrador` → `disponible` → `reservado` → `vendido`
