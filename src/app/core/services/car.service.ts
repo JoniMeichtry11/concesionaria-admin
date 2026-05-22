@@ -77,7 +77,7 @@ export class CarService {
       const { data: photosData, error: photosError } = await this.supabaseService.client
         .from('car_photos')
         .select('car_id, url')
-        .eq('order', 0)
+        .eq('"order"', 0)
         .returns<Pick<PhotoRow, 'car_id' | 'url'>[]>();
 
       if (photosError) throw photosError;
