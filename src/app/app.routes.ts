@@ -15,6 +15,14 @@ export const routes: Routes = [
         loadComponent: () => import('./features/home/home.component').then((m) => m.HomeComponent),
       },
       {
+        path: 'cars/upload',
+        loadComponent: () => import('./features/cars/cars.component').then((m) => m.CarsComponent),
+      },
+      {
+        path: 'cars/:id',
+        loadComponent: () => import('./features/cars/cars.component').then((m) => m.CarsComponent),
+      },
+      {
         path: 'cars',
         loadComponent: () => import('./features/cars/cars.component').then((m) => m.CarsComponent),
       },
@@ -29,3 +37,4 @@ export const routes: Routes = [
     redirectTo: '',
   },
 ];
+
