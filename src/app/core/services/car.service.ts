@@ -1,5 +1,6 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { SupabaseService } from './supabase.service';
+import { PhotoService } from './photo.service';
 import { Car, CarWithCover, CarStatus } from '../models/car.model';
 import { Database } from '../models/supabase.types';
 import { environment } from '../../../environments/environment';
@@ -13,6 +14,7 @@ type PhotoRow = Database['public']['Tables']['car_photos']['Row'];
 })
 export class CarService {
   private supabaseService = inject(SupabaseService);
+  private photoService = inject(PhotoService);
 
   /** Lista completa de autos con su foto de portada */
   readonly cars = signal<CarWithCover[]>([]);
@@ -98,6 +100,97 @@ export class CarService {
     } catch (err: unknown) {
       console.error('Error al cargar autos:', err);
       this.error.set('No se pudieron cargar los autos. Intentá de nuevo.');
+    } finally {
+      this.isLoading.set(false);
+    }
+  }
+
+  /**
+   * Crea un nuevo auto, sube sus fotos a Supabase Storage,
+   * y guarda los registros correspondientes en la tabla car_photos.
+   */
+  async createCar(
+    carData: Partial<Car>,
+    photos: { blob: Blob }[],
+    status: CarStatus,
+    onProgress?: (step: 'saving_car' | 'uploading_photos' | 'saving_photos' | 'done') => void
+  ): Promise<void> {
+    this.isLoading.set(true);
+    this.error.set(null);
+
+    try {
+      if (onProgress) onProgress('saving_car');
+      
+      // 1. Insertar el registro del auto en la tabla 'cars'
+      const newCar: Database['public']['Tables']['cars']['Insert'] = {
+        brand: carData.brand!,
+        model: carData.model!,
+        year: Number(carData.year!),
+        color: carData.color || null,
+        fuel_type: carData.fuel_type || null,
+        transmission: carData.transmission || null,
+        kilometers: carData.kilometers !== null && carData.kilometers !== undefined ? Number(carData.kilometers) : null,
+        price_usd: carData.price_usd !== null && carData.price_usd !== undefined ? Number(carData.price_usd) : null,
+        price_ars: carData.price_ars !== null && carData.price_ars !== undefined ? Number(carData.price_ars) : null,
+        description: carData.description || null,
+        status: status,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data: insertedCar, error: insertError } = await (this.supabaseService.client
+        .from('cars') as any)
+        .insert(newCar)
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Error al insertar auto:', insertError);
+        throw new Error(`Error de base de datos al crear el auto: ${insertError.message}`);
+      }
+
+      if (!insertedCar) {
+        throw new Error('No se recibió la confirmación del auto creado.');
+      }
+
+      const carId = insertedCar.id;
+
+      // 2. Subir las fotos si existen
+      if (photos.length > 0) {
+        if (onProgress) onProgress('uploading_photos');
+        
+        const photoBlobs = photos.map(p => p.blob);
+        const uploadedUrls = await this.photoService.uploadPhotos(carId, photoBlobs);
+
+        // 3. Crear registros en 'car_photos' con el orden correcto
+        if (onProgress) onProgress('saving_photos');
+        
+        const carPhotosPayload: Database['public']['Tables']['car_photos']['Insert'][] = uploadedUrls.map((url, index) => ({
+          car_id: carId,
+          url: url,
+          order: index,
+          created_at: new Date().toISOString()
+        }));
+
+        const { error: photosInsertError } = await (this.supabaseService.client
+          .from('car_photos') as any)
+          .insert(carPhotosPayload);
+
+        if (photosInsertError) {
+          console.error('Error al insertar fotos del auto:', photosInsertError);
+          throw new Error(`Error al vincular las fotos con el auto: ${photosInsertError.message}`);
+        }
+      }
+
+      // 4. Actualizar localmente la lista de autos
+      await this.getCars();
+      if (onProgress) onProgress('done');
+
+    } catch (err: any) {
+      console.error('Error en createCar:', err);
+      const errMsg = err.message || 'No se pudo guardar el auto. Intentá de nuevo.';
+      this.error.set(errMsg);
+      throw new Error(errMsg);
     } finally {
       this.isLoading.set(false);
     }
