@@ -16,7 +16,7 @@ export const routes: Routes = [
       },
       {
         path: 'cars/upload',
-        loadComponent: () => import('./features/cars/cars.component').then((m) => m.CarsComponent),
+        loadComponent: () => import('./features/cars/car-upload/car-upload.component').then((m) => m.CarUploadComponent),
       },
       {
         path: 'cars/:id',
