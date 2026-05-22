@@ -45,4 +45,6 @@ Thumbs.db
 
 # credenciales locales
 .env
-src/environments/environment*.ts
+/src/environments/*
+src/environments/environment.ts
+/src/environments/environment.ts
