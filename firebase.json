@@ -1,0 +1,8 @@
+{
+  "hosting": {
+    "site": "concesionaria-admin-demo",
+    "public": "dist/concesionaria-admin/browser",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [{ "source": "**", "destination": "/index.html" }]
+  }
+}

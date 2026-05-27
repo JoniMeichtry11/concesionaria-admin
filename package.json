@@ -7,6 +7,7 @@
     "set-env:prod": "node scripts/set-env.js --production",
     "start": "npm run set-env && ng serve",
     "build": "npm run set-env:prod && ng build",
+    "deploy": "ng build --configuration production && firebase deploy --only hosting",
     "watch": "npm run set-env && ng build --watch --configuration development",
     "test": "ng test"
   },
@@ -22,6 +23,7 @@
     "@angular/router": "^21.2.0",
     "@angular/service-worker": "^21.2.0",
     "@supabase/supabase-js": "^2.106.1",
+    "firebase": "^12.13.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },
