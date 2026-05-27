@@ -1,6 +1,8 @@
 {
-  "name": "concesionaria-admin",
-  "short_name": "concesionaria-admin",
+  "name": "Mi Concesionaria",
+  "short_name": "Mi Concesionaria",
+  "theme_color": "#534AB7",
+  "background_color": "#ffffff",
   "display": "standalone",
   "scope": "./",
   "start_url": "./",

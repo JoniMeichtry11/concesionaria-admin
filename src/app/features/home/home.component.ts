@@ -1,5 +1,5 @@
 import { Component, inject, signal, effect } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { CarService } from '../../core/services/car.service';
 import { CarWithCover, CarStatus } from '../../core/models/car.model';
@@ -18,13 +18,11 @@ interface StatusChip {
 })
 export class HomeComponent {
   private router = inject(Router);
+  private route = inject(ActivatedRoute);
   protected carService = inject(CarService);
 
   /** Texto del buscador (bindeado con ngModel) */
   protected searchText = signal('');
-
-  /** Mensaje de feedback del clipboard */
-  protected clipboardMsg = signal<string | null>(null);
 
   /** Chips de filtro por estado */
   protected readonly statusChips: StatusChip[] = [
@@ -37,6 +35,24 @@ export class HomeComponent {
   constructor() {
     // Cargar autos al inicializar el componente
     this.carService.getCars();
+
+    // Suscribirse a query params para enfocar el buscador
+    this.route.queryParams.subscribe((params) => {
+      if (params['focusSearch'] === 'true') {
+        setTimeout(() => {
+          const input = document.getElementById('search-input') as HTMLInputElement | null;
+          if (input) {
+            input.focus();
+            // Limpiar query parameter de la URL de forma limpia
+            this.router.navigate([], {
+              relativeTo: this.route,
+              queryParams: { focusSearch: null },
+              queryParamsHandling: 'merge',
+            });
+          }
+        }, 150);
+      }
+    });
   }
 
   /** Callback del buscador — actualiza el filtro en tiempo real */
@@ -60,14 +76,10 @@ export class HomeComponent {
     this.router.navigate(['/cars', 'upload']);
   }
 
-  /** Comparte un auto, muestra feedback si se copió al clipboard */
+  /** Comparte un auto mediante el servicio global de autos */
   async onShare(event: Event, car: CarWithCover): Promise<void> {
     event.stopPropagation();
-    const shared = await this.carService.shareCar(car);
-    if (shared && !navigator.share) {
-      this.clipboardMsg.set('Enlace copiado al portapapeles');
-      setTimeout(() => this.clipboardMsg.set(null), 2500);
-    }
+    await this.carService.shareCar(car);
   }
 
   /** Formatea el precio para mostrar en la lista */
@@ -100,3 +112,4 @@ export class HomeComponent {
     return map[status] || status;
   }
 }
+

@@ -5,6 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { CarService } from '../../../core/services/car.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { SettingsService } from '../../../core/services/settings.service';
+import { ToastService } from '../../../core/services/toast.service';
 import { Car, CarStatus } from '../../../core/models/car.model';
 import { Database } from '../../../core/models/supabase.types';
 
@@ -15,15 +16,55 @@ type PhotoRow = Database['public']['Tables']['car_photos']['Row'];
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
+    <!-- 1. Skeleton Loader cuando está cargando inicialmente y no hay datos del auto -->
+    <div *ngIf="carService.isLoading() && !car()" class="min-h-screen flex flex-col bg-slate-50 pb-24 animate-pulse">
+      <!-- Header Skeleton -->
+      <header class="bg-white border-b border-slate-100 px-4 h-14 flex items-center justify-between shrink-0">
+        <div class="w-8 h-8 rounded-full bg-slate-200"></div>
+        <div class="h-5 w-32 bg-slate-200 rounded-md"></div>
+        <div class="w-8 h-8 rounded-full bg-slate-200"></div>
+      </header>
+
+      <!-- Galería de Fotos Skeleton -->
+      <div class="aspect-[4/3] w-full bg-slate-200 shrink-0"></div>
+
+      <!-- Info del Auto Skeleton -->
+      <div class="p-4 bg-white mb-2 shadow-xs space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="h-6 w-24 bg-slate-200 rounded-full"></div>
+          <div class="h-3 w-16 bg-slate-100 rounded"></div>
+        </div>
+        <div class="h-6 w-3/4 bg-slate-200 rounded-md"></div>
+        <div class="h-4 w-1/3 bg-slate-100 rounded"></div>
+      </div>
+
+      <!-- Ficha Técnica Skeleton -->
+      <div class="bg-white px-4 py-2 shadow-xs mb-2 space-y-4 py-4">
+        <div class="flex justify-between items-center py-2 border-b border-slate-100">
+          <div class="h-4 w-20 bg-slate-200 rounded"></div>
+          <div class="h-4 w-28 bg-slate-200 rounded"></div>
+        </div>
+        <div class="flex justify-between items-center py-2 border-b border-slate-100">
+          <div class="h-4 w-20 bg-slate-200 rounded"></div>
+          <div class="h-4 w-28 bg-slate-200 rounded"></div>
+        </div>
+        <div class="flex justify-between items-center py-2 border-b border-slate-100">
+          <div class="h-4 w-16 bg-slate-200 rounded"></div>
+          <div class="h-4 w-24 bg-slate-200 rounded"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. Contenido Principal una vez cargados los datos -->
     <div class="min-h-screen flex flex-col bg-gray-50 pb-24" *ngIf="car()">
       <!-- Header -->
-      <header class="bg-white border-b sticky top-0 z-10 px-4 h-14 flex items-center justify-between">
+      <header class="bg-white border-b sticky top-0 z-10 px-4 h-14 flex items-center justify-between shrink-0">
         <button (click)="goBack()" class="p-2 -ml-2 rounded-full active:bg-gray-100 transition-colors">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <h1 class="text-lg font-semibold truncate flex-1 text-center">
+        <h1 class="text-lg font-bold truncate flex-1 text-center text-slate-800">
           {{ car()?.brand }} {{ car()?.model }}
         </h1>
         <button *ngIf="isAdmin()" (click)="promptDelete()" class="p-2 -mr-2 rounded-full active:bg-red-50 text-red-600 transition-colors">
@@ -33,9 +74,9 @@ type PhotoRow = Database['public']['Tables']['car_photos']['Row'];
         </button>
       </header>
 
-      <!-- Loading / Error from service -->
-      <div *ngIf="carService.isLoading()" class="p-4 text-center text-sm text-gray-500">
-        Actualizando...
+      <!-- Indicador lineal de guardado en segundo plano -->
+      <div *ngIf="carService.isLoading()" class="h-0.5 w-full bg-indigo-100 overflow-hidden shrink-0">
+        <div class="h-full bg-indigo-600 animate-pulse w-full"></div>
       </div>
 
       <!-- Content -->
@@ -63,36 +104,37 @@ type PhotoRow = Database['public']['Tables']['car_photos']['Row'];
           </button>
         </div>
 
-        <div class="p-4 bg-white mb-2 shadow-sm">
+        <div class="p-4 bg-white mb-2 shadow-xs">
           <!-- Status Badge -->
           <div class="mb-4 flex items-center justify-between">
-            <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium" [ngClass]="getStatusClasses(car()!.status)">
-              {{ car()!.status | uppercase }}
+            <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold" [ngClass]="getStatusClasses(car()!.status)">
+              {{ getStatusLabel(car()!.status) }}
             </span>
-            <span class="text-xs text-gray-500">ID: {{ car()!.id.slice(0, 8) }}</span>
+            <span class="text-xs text-gray-400 font-semibold">ID: {{ car()!.id.slice(0, 8) }}</span>
           </div>
 
           <!-- Status Actions -->
           <div class="flex flex-wrap gap-2 mb-4">
             <button *ngFor="let nextStatus of availableNextStatuses()" 
                     (click)="changeStatus(nextStatus)"
-                    class="px-3 py-1.5 text-sm rounded-lg border font-medium active:scale-95 transition-transform"
+                    [disabled]="carService.isLoading()"
+                    class="px-3.5 py-1.5 text-xs rounded-xl border font-bold active:scale-95 transition-transform disabled:opacity-50"
                     [ngClass]="{
                       'border-indigo-200 bg-indigo-50 text-indigo-700': nextStatus !== 'vendido',
                       'border-green-200 bg-green-50 text-green-700': nextStatus === 'disponible',
                       'border-yellow-200 bg-yellow-50 text-yellow-700': nextStatus === 'reservado',
                       'border-red-200 bg-red-50 text-red-700': nextStatus === 'vendido'
                     }">
-              Marcar como {{ nextStatus }}
+              Marcar como {{ getStatusLabel(nextStatus) }}
             </button>
           </div>
 
           <h2 class="text-xl font-bold text-gray-900 mb-1">{{ car()!.brand }} {{ car()!.model }}</h2>
-          <p class="text-sm text-gray-500">{{ car()!.year }} • {{ car()!.kilometers | number }} km</p>
+          <p class="text-xs text-gray-500 font-semibold">{{ car()!.year }} • {{ car()!.kilometers | number }} km</p>
         </div>
 
         <!-- Editable Details -->
-        <div class="bg-white px-4 py-2 shadow-sm mb-2">
+        <div class="bg-white px-4 py-2 shadow-xs mb-2">
           
           <!-- Price USD -->
           <div class="flex items-center justify-between py-3 border-b border-gray-100" *ngIf="settingsService.settings()?.currencies?.includes('USD')">
@@ -102,10 +144,11 @@ type PhotoRow = Database['public']['Tables']['car_photos']['Row'];
                      [ngModel]="car()!.price_usd" 
                      (ngModelChange)="updatePrice('USD', $event)"
                      [ngModelOptions]="{updateOn: 'blur'}"
-                     class="text-right text-lg font-bold text-gray-900 w-full focus:outline-none focus:ring-0 bg-transparent"
+                     [disabled]="carService.isLoading()"
+                     class="text-right text-base font-extrabold text-slate-800 w-full focus:outline-none focus:ring-0 bg-transparent disabled:opacity-60"
                      placeholder="0">
             </div>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-400 ml-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-400 ml-2 shrink-0 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
           </div>
 
           <!-- Price ARS -->
@@ -116,37 +159,38 @@ type PhotoRow = Database['public']['Tables']['car_photos']['Row'];
                      [ngModel]="car()!.price_ars" 
                      (ngModelChange)="updatePrice('ARS', $event)"
                      [ngModelOptions]="{updateOn: 'blur'}"
-                     class="text-right text-lg font-bold text-gray-900 w-full focus:outline-none focus:ring-0 bg-transparent"
+                     [disabled]="carService.isLoading()"
+                     class="text-right text-base font-extrabold text-slate-800 w-full focus:outline-none focus:ring-0 bg-transparent disabled:opacity-60"
                      placeholder="0">
             </div>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-400 ml-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-400 ml-2 shrink-0 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
           </div>
 
           <!-- Color -->
           <div class="flex items-center justify-between py-3 border-b border-gray-100">
             <span class="text-sm text-gray-500 font-medium w-1/3">Color</span>
-            <input type="text" [ngModel]="car()!.color" (ngModelChange)="updateField('color', $event)" [ngModelOptions]="{updateOn: 'blur'}" class="text-right text-sm text-gray-900 w-full focus:outline-none focus:ring-0 bg-transparent">
+            <input type="text" [ngModel]="car()!.color" (ngModelChange)="updateField('color', $event)" [ngModelOptions]="{updateOn: 'blur'}" [disabled]="carService.isLoading()" class="text-right text-sm text-slate-700 font-bold w-full focus:outline-none focus:ring-0 bg-transparent disabled:opacity-60">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-400 ml-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
           </div>
 
           <!-- Año -->
           <div class="flex items-center justify-between py-3 border-b border-gray-100">
             <span class="text-sm text-gray-500 font-medium w-1/3">Año</span>
-            <input type="number" [ngModel]="car()!.year" (ngModelChange)="updateField('year', $event)" [ngModelOptions]="{updateOn: 'blur'}" class="text-right text-sm text-gray-900 w-full focus:outline-none focus:ring-0 bg-transparent">
+            <input type="number" [ngModel]="car()!.year" (ngModelChange)="updateField('year', $event)" [ngModelOptions]="{updateOn: 'blur'}" [disabled]="carService.isLoading()" class="text-right text-sm text-slate-700 font-bold w-full focus:outline-none focus:ring-0 bg-transparent disabled:opacity-60">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-400 ml-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
           </div>
 
           <!-- Kilómetros -->
           <div class="flex items-center justify-between py-3 border-b border-gray-100">
             <span class="text-sm text-gray-500 font-medium w-1/3">Kilómetros</span>
-            <input type="number" [ngModel]="car()!.kilometers" (ngModelChange)="updateField('kilometers', $event)" [ngModelOptions]="{updateOn: 'blur'}" class="text-right text-sm text-gray-900 w-full focus:outline-none focus:ring-0 bg-transparent">
+            <input type="number" [ngModel]="car()!.kilometers" (ngModelChange)="updateField('kilometers', $event)" [ngModelOptions]="{updateOn: 'blur'}" [disabled]="carService.isLoading()" class="text-right text-sm text-slate-700 font-bold w-full focus:outline-none focus:ring-0 bg-transparent disabled:opacity-60">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-400 ml-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
           </div>
 
           <!-- Combustible -->
           <div class="flex items-center justify-between py-3 border-b border-gray-100">
             <span class="text-sm text-gray-500 font-medium w-1/3">Combustible</span>
-            <select [ngModel]="car()!.fuel_type" (ngModelChange)="updateField('fuel_type', $event)" class="text-right text-sm text-gray-900 w-full focus:outline-none focus:ring-0 bg-transparent dir-rtl appearance-none">
+            <select [ngModel]="car()!.fuel_type" (ngModelChange)="updateField('fuel_type', $event)" [disabled]="carService.isLoading()" class="text-right text-sm text-slate-700 font-bold w-full focus:outline-none focus:ring-0 bg-transparent dir-rtl appearance-none disabled:opacity-60">
               <option [ngValue]="null">Desconocido</option>
               <option value="nafta">Nafta</option>
               <option value="diesel">Diesel</option>
@@ -160,7 +204,7 @@ type PhotoRow = Database['public']['Tables']['car_photos']['Row'];
           <!-- Transmisión -->
           <div class="flex items-center justify-between py-3">
             <span class="text-sm text-gray-500 font-medium w-1/3">Transmisión</span>
-            <select [ngModel]="car()!.transmission" (ngModelChange)="updateField('transmission', $event)" class="text-right text-sm text-gray-900 w-full focus:outline-none focus:ring-0 bg-transparent dir-rtl appearance-none">
+            <select [ngModel]="car()!.transmission" (ngModelChange)="updateField('transmission', $event)" [disabled]="carService.isLoading()" class="text-right text-sm text-slate-700 font-bold w-full focus:outline-none focus:ring-0 bg-transparent dir-rtl appearance-none disabled:opacity-60">
               <option [ngValue]="null">Desconocido</option>
               <option value="manual">Manual</option>
               <option value="automatica">Automática</option>
@@ -170,19 +214,19 @@ type PhotoRow = Database['public']['Tables']['car_photos']['Row'];
         </div>
 
         <!-- Descripción -->
-        <div class="bg-white p-4 shadow-sm mb-4">
+        <div class="bg-white p-4 shadow-xs mb-4">
           <div class="flex items-center justify-between mb-2">
             <h3 class="text-sm text-gray-500 font-medium">Descripción</h3>
             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
           </div>
-          <textarea [ngModel]="car()!.description" (ngModelChange)="updateField('description', $event)" [ngModelOptions]="{updateOn: 'blur'}" rows="4" class="w-full text-sm text-gray-900 focus:outline-none resize-none bg-transparent" placeholder="Sin descripción..."></textarea>
+          <textarea [ngModel]="car()!.description" (ngModelChange)="updateField('description', $event)" [ngModelOptions]="{updateOn: 'blur'}" [disabled]="carService.isLoading()" rows="4" class="w-full text-sm text-slate-700 leading-relaxed font-semibold focus:outline-none resize-none bg-transparent disabled:opacity-60 animate-fade-in" placeholder="Sin descripción..."></textarea>
         </div>
 
       </main>
 
       <!-- Bottom fixed action -->
-      <div class="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200 z-10 max-w-screen-sm mx-auto">
-        <button (click)="shareCar()" class="w-full bg-indigo-600 text-white rounded-xl h-12 font-medium text-base active:scale-95 transition-transform flex items-center justify-center gap-2">
+      <div class="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-gray-200 z-10 max-w-screen-sm mx-auto">
+        <button (click)="shareCar()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl h-12 font-bold text-base active:scale-95 transition-transform flex items-center justify-center gap-2 shadow-md shadow-indigo-600/10">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
           Compartir auto
         </button>
@@ -190,26 +234,26 @@ type PhotoRow = Database['public']['Tables']['car_photos']['Row'];
 
       <!-- Delete Confirmation Bottom Sheet -->
       <div *ngIf="showDeleteConfirm()" class="fixed inset-0 z-50 flex flex-col justify-end">
-        <div class="absolute inset-0 bg-black/50" (click)="showDeleteConfirm.set(false)"></div>
-        <div class="bg-white rounded-t-2xl p-6 relative z-10 max-w-screen-sm w-full mx-auto">
+        <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-xs animate-fade-in" (click)="showDeleteConfirm.set(false)"></div>
+        <div class="bg-white rounded-t-3xl p-6 relative z-10 max-w-screen-sm w-full mx-auto shadow-xl">
           <h3 class="text-xl font-bold text-gray-900 mb-2">¿Eliminar este auto?</h3>
-          <p class="text-gray-600 mb-6">Se borrarán también todas sus fotos. Esta acción no se puede deshacer.</p>
+          <p class="text-slate-500 text-sm mb-6 font-medium">Se borrarán también todas sus fotos. Esta acción no se puede deshacer.</p>
           <div class="flex gap-3">
-            <button (click)="showDeleteConfirm.set(false)" class="flex-1 h-12 rounded-xl font-medium bg-gray-100 text-gray-700 active:bg-gray-200">Cancelar</button>
-            <button (click)="confirmDelete()" [disabled]="carService.isLoading()" class="flex-1 h-12 rounded-xl font-medium bg-red-600 text-white active:bg-red-700 disabled:opacity-50">Eliminar</button>
+            <button (click)="showDeleteConfirm.set(false)" class="flex-1 h-12 rounded-xl font-bold bg-slate-100 text-slate-700 active:bg-slate-200 transition-all">Cancelar</button>
+            <button (click)="confirmDelete()" [disabled]="carService.isLoading()" class="flex-1 h-12 rounded-xl font-bold bg-red-600 text-white active:bg-red-700 disabled:opacity-50 transition-all">Eliminar</button>
           </div>
         </div>
       </div>
 
       <!-- Sold Confirmation Bottom Sheet -->
       <div *ngIf="showSoldConfirm()" class="fixed inset-0 z-50 flex flex-col justify-end">
-        <div class="absolute inset-0 bg-black/50" (click)="showSoldConfirm.set(false)"></div>
-        <div class="bg-white rounded-t-2xl p-6 relative z-10 max-w-screen-sm w-full mx-auto">
+        <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-xs animate-fade-in" (click)="showSoldConfirm.set(false)"></div>
+        <div class="bg-white rounded-t-3xl p-6 relative z-10 max-w-screen-sm w-full mx-auto shadow-xl">
           <h3 class="text-xl font-bold text-gray-900 mb-2">¿Marcar como vendido?</h3>
-          <p class="text-gray-600 mb-6">Esta acción lo ocultará del catálogo público permanentemente.</p>
+          <p class="text-slate-500 text-sm mb-6 font-medium">Esta acción lo ocultará del catálogo público permanentemente.</p>
           <div class="flex gap-3">
-            <button (click)="showSoldConfirm.set(false)" class="flex-1 h-12 rounded-xl font-medium bg-gray-100 text-gray-700 active:bg-gray-200">Cancelar</button>
-            <button (click)="confirmSold()" [disabled]="carService.isLoading()" class="flex-1 h-12 rounded-xl font-medium bg-indigo-600 text-white active:bg-indigo-700 disabled:opacity-50">Confirmar</button>
+            <button (click)="showSoldConfirm.set(false)" class="flex-1 h-12 rounded-xl font-bold bg-slate-100 text-slate-700 active:bg-slate-200 transition-all">Cancelar</button>
+            <button (click)="confirmSold()" [disabled]="carService.isLoading()" class="flex-1 h-12 rounded-xl font-bold bg-indigo-600 text-white active:bg-indigo-700 disabled:opacity-50 transition-all">Confirmar</button>
           </div>
         </div>
       </div>
@@ -235,6 +279,7 @@ export class CarDetailComponent implements OnInit {
   public carService = inject(CarService);
   private authService = inject(AuthService);
   public settingsService = inject(SettingsService);
+  private toastService = inject(ToastService);
 
   readonly car = signal<Car | null>(null);
   readonly photos = signal<PhotoRow[]>([]);
@@ -296,6 +341,17 @@ export class CarDetailComponent implements OnInit {
     }
   }
 
+  getStatusLabel(status: string): string {
+    switch(status) {
+      case 'disponible': return 'Disponible';
+      case 'reservado': return 'Reservado';
+      case 'pausado': return 'Pausado';
+      case 'borrador': return 'Borrador';
+      case 'vendido': return 'Vendido';
+      default: return status;
+    }
+  }
+
   availableNextStatuses(): CarStatus[] {
     const current = this.car()?.status;
     if (!current) return [];
@@ -329,8 +385,9 @@ export class CarDetailComponent implements OnInit {
       try {
         await this.carService.updateStatus(c.id, status);
         this.car.set({ ...c, status });
+        this.toastService.show('Estado actualizado');
       } catch (e) {
-        alert('Error al cambiar el estado');
+        this.toastService.show('Error de conexión. Intentá de nuevo.', 'error');
       }
     }
   }
@@ -341,8 +398,9 @@ export class CarDetailComponent implements OnInit {
       try {
         await this.carService.updateCar(c.id, { [field]: value });
         this.car.set({ ...c, [field]: value });
+        this.toastService.show('Cambios guardados');
       } catch (e) {
-        alert('Error al actualizar campo');
+        this.toastService.show('Error de conexión. Intentá de nuevo.', 'error');
       }
     }
   }
@@ -369,8 +427,9 @@ export class CarDetailComponent implements OnInit {
     try {
       await this.carService.updatePrice(c.id, priceUsd || 0, priceArs || undefined);
       this.car.set({ ...c, price_usd: priceUsd, price_ars: priceArs });
+      this.toastService.show('Precio actualizado');
     } catch (e) {
-      alert('Error al actualizar precio');
+      this.toastService.show('Error de conexión. Intentá de nuevo.', 'error');
     }
   }
 
@@ -384,9 +443,10 @@ export class CarDetailComponent implements OnInit {
       try {
         await this.carService.deleteCar(c.id);
         this.showDeleteConfirm.set(false);
+        this.toastService.show('Auto eliminado');
         this.router.navigate(['/']);
       } catch (e) {
-        alert('Error al eliminar');
+        this.toastService.show('Error de conexión. Intentá de nuevo.', 'error');
       }
     }
   }

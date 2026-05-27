@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Car, CarStatus } from '../../../../core/models/car.model';
 import { CarService } from '../../../../core/services/car.service';
+import { ToastService } from '../../../../core/services/toast.service';
 
 @Component({
   selector: 'app-step-review',
@@ -176,6 +177,7 @@ import { CarService } from '../../../../core/services/car.service';
 export class StepReviewComponent {
   private router = inject(Router);
   private carService = inject(CarService);
+  private toastService = inject(ToastService);
 
   @Input() carData: Partial<Car> = {};
   @Input() coverUrl: string | null = null;
@@ -256,10 +258,18 @@ export class StepReviewComponent {
         }
       );
 
+      // Mostrar Toast de éxito
+      if (status === 'disponible') {
+        this.toastService.show('Auto publicado');
+      } else {
+        this.toastService.show('Borrador guardado');
+      }
+
       // Redirigir a Home con mensaje de éxito (o simplemente navegar)
       this.router.navigate(['/']);
     } catch (err: any) {
       console.error('Error al guardar el auto:', err);
+      this.toastService.show('Error de conexión. Intentá de nuevo.', 'error');
       this.errorMsg.set(err.message || 'No se pudo guardar el auto. Por favor, reintentá.');
     } finally {
       this.isLoading.set(false);

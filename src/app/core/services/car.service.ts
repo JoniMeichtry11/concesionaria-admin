@@ -1,6 +1,7 @@
 import { Injectable, inject, signal, computed } from '@angular/core';
 import { SupabaseService } from './supabase.service';
 import { PhotoService } from './photo.service';
+import { ToastService } from './toast.service';
 import { Car, CarWithCover, CarStatus } from '../models/car.model';
 import { Database } from '../models/supabase.types';
 import { environment } from '../../../environments/environment';
@@ -15,6 +16,8 @@ type PhotoRow = Database['public']['Tables']['car_photos']['Row'];
 export class CarService {
   private supabaseService = inject(SupabaseService);
   private photoService = inject(PhotoService);
+  private toastService = inject(ToastService);
+
 
   /** Lista completa de autos con su foto de portada */
   readonly cars = signal<CarWithCover[]>([]);
@@ -280,6 +283,7 @@ export class CarService {
           title: `${car.brand} ${car.model} ${car.year}`,
           text,
         });
+        this.toastService.show('¡Compartido!');
         return true;
       } catch (err: unknown) {
         // El usuario canceló el share o hubo un error
@@ -293,9 +297,11 @@ export class CarService {
     // Fallback: copiar al clipboard
     try {
       await navigator.clipboard.writeText(text);
+      this.toastService.show('¡Link copiado!');
       return true;
     } catch {
       console.error('No se pudo copiar al clipboard');
+      this.toastService.show('Error de conexión. Intentá de nuevo.', 'error');
       return false;
     }
   }

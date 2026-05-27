@@ -23,6 +23,11 @@ export class SettingsService {
    * Si ya están cargados, los devuelve del caché.
    * Utiliza valores por defecto si la base de datos está vacía o ocurre un error.
    */
+  /**
+   * Carga los ajustes de la concesionaria.
+   * Si ya están cargados, los devuelve del caché.
+   * Utiliza valores por defecto si la base de datos está vacía o ocurre un error.
+   */
   async loadSettings(): Promise<Settings | null> {
     if (this.settings()) {
       return this.settings();
@@ -32,12 +37,14 @@ export class SettingsService {
     try {
       const { data, error } = await this.supabaseService.client
         .from('settings')
-        .select('*');
+        .select('*')
+        .returns<Settings[]>();
       
       if (error) throw error;
       
       if (data && data.length > 0) {
         this.settings.set(data[0]);
+        this.updateDynamicManifest(data[0].concesionaria_name);
         return data[0];
       }
       
@@ -52,6 +59,7 @@ export class SettingsService {
         ars_rate_updated_at: null,
       };
       this.settings.set(fallback);
+      this.updateDynamicManifest(fallback.concesionaria_name);
       return fallback;
     } catch (err: unknown) {
       console.error('Error al cargar settings en el servicio:', err);
@@ -66,6 +74,7 @@ export class SettingsService {
         ars_rate_updated_at: null,
       };
       this.settings.set(fallback);
+      this.updateDynamicManifest(fallback.concesionaria_name);
       return fallback;
     } finally {
       this.isLoading.set(false);
@@ -91,12 +100,47 @@ export class SettingsService {
 
       if (updatedData && updatedData.length > 0) {
         this.settings.set(updatedData[0]);
+        this.updateDynamicManifest(updatedData[0].concesionaria_name);
       }
     } catch (err: unknown) {
       console.error('Error al actualizar settings:', err);
       throw new Error('No se pudieron guardar los ajustes.');
     } finally {
       this.isLoading.set(false);
+    }
+  }
+
+  /**
+   * Actualiza dinámicamente el manifiesto en el DOM
+   */
+  private updateDynamicManifest(name: string): void {
+    if (typeof document !== 'undefined') {
+      const manifestElement = document.querySelector('link[rel="manifest"]') as HTMLLinkElement;
+      if (manifestElement) {
+        const manifestData = {
+          name: name || 'Mi Concesionaria',
+          short_name: name || 'Mi Concesionaria',
+          theme_color: "#534AB7",
+          background_color: "#ffffff",
+          display: "standalone",
+          scope: "./",
+          start_url: "./",
+          icons: [
+            { "src": "icons/icon-72x72.png", "sizes": "72x72", "type": "image/png", "purpose": "maskable any" },
+            { "src": "icons/icon-96x96.png", "sizes": "96x96", "type": "image/png", "purpose": "maskable any" },
+            { "src": "icons/icon-128x128.png", "sizes": "128x128", "type": "image/png", "purpose": "maskable any" },
+            { "src": "icons/icon-144x144.png", "sizes": "144x144", "type": "image/png", "purpose": "maskable any" },
+            { "src": "icons/icon-152x152.png", "sizes": "152x152", "type": "image/png", "purpose": "maskable any" },
+            { "src": "icons/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable any" },
+            { "src": "icons/icon-384x384.png", "sizes": "384x384", "type": "image/png", "purpose": "maskable any" },
+            { "src": "icons/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable any" }
+          ]
+        };
+        const stringManifest = JSON.stringify(manifestData);
+        const blob = new Blob([stringManifest], { type: 'application/json' });
+        const manifestURL = URL.createObjectURL(blob);
+        manifestElement.setAttribute('href', manifestURL);
+      }
     }
   }
 

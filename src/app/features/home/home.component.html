@@ -46,20 +46,13 @@
   </header>
 
   <!-- Contenido principal -->
-  <main class="flex-1 px-4 py-4 max-w-screen-sm mx-auto w-full">
+  <main class="flex-1 px-4 py-4 max-w-screen-sm mx-auto w-full pb-28">
 
-    <!-- Toast de clipboard -->
-    @if (clipboardMsg()) {
-      <div class="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg animate-fade-in">
-        {{ clipboardMsg() }}
-      </div>
-    }
-
-    <!-- Estado de carga: Skeletons -->
-    @if (carService.isLoading()) {
+    <!-- Estado de carga inicial: Skeletons -->
+    @if (carService.isLoading() && carService.cars().length === 0) {
       <div class="space-y-3">
         @for (i of [1, 2, 3, 4, 5]; track i) {
-          <div class="bg-white rounded-2xl p-3 flex gap-3 animate-pulse shadow-sm">
+          <div class="bg-white rounded-2xl p-3 flex gap-3 animate-pulse shadow-sm border border-slate-100">
             <div class="w-24 h-18 rounded-xl bg-slate-200 shrink-0 aspect-[4/3]"></div>
             <div class="flex-1 py-1 space-y-2.5">
               <div class="h-4 w-3/4 bg-slate-200 rounded"></div>
@@ -71,22 +64,32 @@
       </div>
     }
 
-    <!-- Estado vacío: Sin resultados -->
+    <!-- Estado vacío: Sin resultados o Sin autos -->
     @else if (carService.filteredCars().length === 0 && !carService.isLoading()) {
-      <div class="flex flex-col items-center justify-center py-16 text-center">
-        <!-- Ícono de auto vacío -->
-        <div class="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mb-4">
-          <svg class="w-10 h-10 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0H5.625m0 0L3.375 14.25m0 0 2.625-6.75A1.125 1.125 0 0 1 7.062 6.75h9.876a1.125 1.125 0 0 1 1.062.75l2.625 6.75m-17.25 0h17.25" />
-          </svg>
-        </div>
-
+      <div class="flex flex-col items-center justify-center py-16 text-center max-w-xs mx-auto px-4 animate-fade-in">
         @if (searchText() || carService.statusFilter() !== 'todos') {
-          <p class="text-slate-500 text-base font-medium">No se encontraron autos</p>
-          <p class="text-slate-400 text-sm mt-1">Probá con otra búsqueda o filtro</p>
+          <!-- Búsqueda sin resultados -->
+          <div class="w-20 h-20 rounded-full bg-slate-100 flex items-center justify-center mb-5 text-slate-400">
+            <svg class="w-10 h-10" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+            </svg>
+          </div>
+          <h3 class="text-slate-700 text-base font-bold">Sin resultados</h3>
+          <p class="text-slate-500 text-sm mt-2 leading-relaxed">No encontramos autos con ese nombre. Probá con otra marca o modelo.</p>
         } @else {
-          <p class="text-slate-500 text-base font-medium">Todavía no hay autos cargados</p>
-          <p class="text-slate-400 text-sm mt-1">Tocá el botón + para agregar el primero</p>
+          <!-- Home sin autos -->
+          <div class="w-32 h-24 mb-6 text-slate-300 flex items-center justify-center">
+            <svg class="w-full h-full text-indigo-100" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0H5.625m0 0L3.375 14.25m0 0 2.625-6.75A1.125 1.125 0 0 1 7.062 6.75h9.876a1.125 1.125 0 0 1 1.062.75l2.625 6.75m-17.25 0h17.25" />
+            </svg>
+          </div>
+          <h3 class="text-slate-800 text-base font-bold">Todavía no hay autos</h3>
+          <p class="text-slate-500 text-sm mt-2 leading-relaxed font-medium">Todavía no hay autos. ¡Agregá el primero!</p>
+          <button
+            (click)="goToUpload()"
+            class="mt-6 px-6 py-2.5 bg-indigo-600 text-white font-bold rounded-xl text-sm shadow-md shadow-indigo-600/20 hover:bg-indigo-700 active:scale-95 transition-all">
+            Agregar auto
+          </button>
         }
       </div>
     }
@@ -175,11 +178,12 @@
   <button
     id="fab-add-car"
     (click)="goToUpload()"
-    class="fixed bottom-6 right-6 z-30 w-14 h-14 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-600/30 flex items-center justify-center hover:bg-indigo-700 active:scale-90 transition-all duration-200"
+    class="fixed bottom-24 right-6 z-30 w-14 h-14 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-600/30 flex items-center justify-center hover:bg-indigo-700 active:scale-90 transition-all duration-200"
     title="Agregar auto">
     <svg class="w-7 h-7" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
       <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
     </svg>
   </button>
+
 
 </div>

@@ -1,1 +1,31 @@
-<router-outlet />
+<div [@routeAnimations]="prepareRoute(outlet)" class="relative min-h-screen flex flex-col bg-slate-50">
+  <router-outlet #outlet="outlet" />
+</div>
+
+<!-- Barra de navegación inferior global -->
+@if (showBottomNav()) {
+  <app-bottom-nav />
+}
+
+<!-- Notificaciones Toast globales en la parte superior -->
+<div class="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex flex-col gap-2 w-full max-w-xs px-4 pointer-events-none">
+  @for (toast of toastService.toasts(); track toast.id) {
+    <div
+      [class]="'p-3.5 rounded-xl shadow-lg border text-sm font-semibold flex items-center gap-2.5 pointer-events-auto transition-all duration-300 animate-slide-in ' + 
+        (toast.type === 'success' 
+          ? 'bg-emerald-50 border-emerald-100 text-emerald-800' 
+          : 'bg-rose-50 border-rose-100 text-rose-800')"
+    >
+      @if (toast.type === 'success') {
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-emerald-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+        </svg>
+      } @else {
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-rose-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+        </svg>
+      }
+      <span class="flex-grow text-left">{{ toast.message }}</span>
+    </div>
+  }
+</div>
