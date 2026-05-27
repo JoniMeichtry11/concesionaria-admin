@@ -265,7 +265,7 @@ export class CarService {
    * Genera el texto listo para compartir un auto.
    */
   getShareText(car: Car): string {
-    const url = `${environment.catalogUrl}/${car.id}`;
+    const url = `${environment.catalogUrl}/auto/${car.id}`;
     return `Hola! Te comparto este ${car.brand} ${car.model} ${car.year}: ${url}`;
   }
 

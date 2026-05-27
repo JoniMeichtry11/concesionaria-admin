@@ -200,8 +200,9 @@ export class StepReviewComponent {
     return `${km.toLocaleString('es-AR')} km`;
   }
 
-  protected formatFuelType(fuel: string | null | undefined): string {
+  protected formatFuelType(fuel: string[] | string | null | undefined): string {
     if (!fuel) return 'No especificado';
+    const arr = Array.isArray(fuel) ? fuel : [fuel];
     const map: Record<string, string> = {
       nafta: 'Nafta',
       diesel: 'Diesel',
@@ -209,8 +210,7 @@ export class StepReviewComponent {
       hibrido: 'Híbrido',
       electrico: 'Eléctrico'
     };
-    return fuel
-      .split('+')
+    return arr
       .map(part => {
         const trimmed = part.trim();
         return map[trimmed] || trimmed.charAt(0).toUpperCase() + trimmed.slice(1);

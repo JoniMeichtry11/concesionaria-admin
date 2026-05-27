@@ -67,11 +67,18 @@ type PhotoRow = Database['public']['Tables']['car_photos']['Row'];
         <h1 class="text-lg font-bold truncate flex-1 text-center text-slate-800">
           {{ car()?.brand }} {{ car()?.model }}
         </h1>
-        <button *ngIf="isAdmin()" (click)="promptDelete()" class="p-2 -mr-2 rounded-full active:bg-red-50 text-red-600 transition-colors">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-        </button>
+        <div class="flex items-center gap-2">
+          <button (click)="shareCar()" class="p-2 rounded-full active:bg-indigo-50 text-indigo-600 transition-colors" title="Compartir">
+            <svg class="w-6 h-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
+            </svg>
+          </button>
+          <button *ngIf="isAdmin()" (click)="promptDelete()" class="p-2 -mr-2 rounded-full active:bg-red-50 text-red-600 transition-colors" title="Eliminar">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
       </header>
 
       <!-- Indicador lineal de guardado en segundo plano -->
@@ -188,17 +195,17 @@ type PhotoRow = Database['public']['Tables']['car_photos']['Row'];
           </div>
 
           <!-- Combustible -->
-          <div class="flex items-center justify-between py-3 border-b border-gray-100">
-            <span class="text-sm text-gray-500 font-medium w-1/3">Combustible</span>
-            <select [ngModel]="car()!.fuel_type" (ngModelChange)="updateField('fuel_type', $event)" [disabled]="carService.isLoading()" class="text-right text-sm text-slate-700 font-bold w-full focus:outline-none focus:ring-0 bg-transparent dir-rtl appearance-none disabled:opacity-60">
-              <option [ngValue]="null">Desconocido</option>
-              <option value="nafta">Nafta</option>
-              <option value="diesel">Diesel</option>
-              <option value="gnc">GNC</option>
-              <option value="hibrido">Híbrido</option>
-              <option value="electrico">Eléctrico</option>
-            </select>
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-400 ml-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+          <div class="flex flex-col py-3 border-b border-gray-100">
+            <span class="text-sm text-gray-500 font-medium mb-3">Combustible</span>
+            <div class="flex flex-wrap gap-2">
+              <button *ngFor="let opt of ['Nafta', 'Diesel', 'GNC', 'Híbrido', 'Eléctrico']"
+                  (click)="toggleFuelType(opt)"
+                  [disabled]="carService.isLoading()"
+                  [class]="'px-3 py-1.5 text-xs font-bold rounded-full border transition-colors ' + 
+                    (hasFuelType(opt) ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50')">
+                {{ opt }}
+              </button>
+            </div>
           </div>
 
           <!-- Transmisión -->
@@ -431,6 +438,40 @@ export class CarDetailComponent implements OnInit {
     } catch (e) {
       this.toastService.show('Error de conexión. Intentá de nuevo.', 'error');
     }
+  }
+
+  hasFuelType(opt: string): boolean {
+    const c = this.car();
+    if (!c || !c.fuel_type) return false;
+    const dbVal = this.mapFuelOption(opt);
+    return c.fuel_type.includes(dbVal);
+  }
+
+  toggleFuelType(opt: string) {
+    const c = this.car();
+    if (!c) return;
+    const dbVal = this.mapFuelOption(opt);
+    let parts: string[] = Array.isArray(c.fuel_type) ? [...c.fuel_type] : [];
+    
+    if (parts.includes(dbVal)) {
+      parts = parts.filter(p => p !== dbVal);
+    } else {
+      parts.push(dbVal);
+    }
+    
+    const newVal = parts.length > 0 ? parts : null;
+    this.updateField('fuel_type', newVal);
+  }
+
+  private mapFuelOption(opt: string): string {
+    const map: Record<string, string> = {
+      'Nafta': 'nafta',
+      'Diesel': 'diesel',
+      'GNC': 'gnc',
+      'Híbrido': 'hibrido',
+      'Eléctrico': 'electrico',
+    };
+    return map[opt] || opt.toLowerCase();
   }
 
   promptDelete() {

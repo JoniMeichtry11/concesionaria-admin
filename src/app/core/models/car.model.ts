@@ -10,7 +10,7 @@ export interface Car {
   model: string;
   year: number;
   color: string | null;
-  fuel_type: string | null;
+  fuel_type: string[] | null;
   transmission: string | null;
   kilometers: number | null;
   price_usd: number | null;

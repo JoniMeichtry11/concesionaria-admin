@@ -18,7 +18,7 @@ Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional, con esta e
   "model": "string o null",
   "year": number o null,
   "color": "string o null",
-  "fuel_type": "nafta|diesel|gnc|hibrido|electrico o null",
+  "fuel_type": ["arreglo", "de", "strings", "nafta|diesel|gnc|hibrido|electrico", "o null"],
   "transmission": "manual|automatica o null",
   "confidence": {
     "brand": "high|medium|low",
@@ -155,12 +155,23 @@ Si no puedes determinar un campo con certeza, devuelve null para ese campo.`;
    */
   private fillMissingFields(data: Partial<GeminiCarAnalysis>): GeminiCarAnalysis {
     const confidence = data.confidence;
+
+    // Normalize fuel_type: Gemini may return a string or an array
+    let fuelType: GeminiCarAnalysis['fuel_type'] = null;
+    if (data.fuel_type) {
+      if (Array.isArray(data.fuel_type)) {
+        fuelType = data.fuel_type;
+      } else if (typeof data.fuel_type === 'string') {
+        fuelType = [data.fuel_type as any];
+      }
+    }
+
     return {
       brand: data.brand ?? null,
       model: data.model ?? null,
       year: data.year ?? null,
       color: data.color ?? null,
-      fuel_type: data.fuel_type ?? null,
+      fuel_type: fuelType,
       transmission: data.transmission ?? null,
       confidence: {
         brand: confidence?.brand ?? 'low',

@@ -12,7 +12,7 @@ export interface GeminiCarAnalysis {
   model: string | null;
   year: number | null;
   color: string | null;
-  fuel_type: 'nafta' | 'diesel' | 'gnc' | 'hibrido' | 'electrico' | null;
+  fuel_type: ('nafta' | 'diesel' | 'gnc' | 'hibrido' | 'electrico')[] | null;
   transmission: 'manual' | 'automatica' | null;
   confidence: GeminiConfidence;
   description: string;

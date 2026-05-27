@@ -645,8 +645,8 @@ export class StepQuestionnaireComponent {
     const dbVal = this.mapOptionValue(field, option);
     if (field === 'fuel_type') {
       if (!currentVal) return false;
-      const parts = String(currentVal).split('+').map(p => p.trim());
-      return parts.includes(dbVal);
+      const arr = Array.isArray(currentVal) ? currentVal : [];
+      return arr.includes(dbVal);
     }
     return currentVal === dbVal;
   }
@@ -657,7 +657,7 @@ export class StepQuestionnaireComponent {
   protected toggleFuelTypeOption(option: string) {
     const dbVal = this.mapOptionValue('fuel_type', option);
     const currentVal = this.getFieldValue('fuel_type');
-    let parts = currentVal ? String(currentVal).split('+').map(p => p.trim()) : [];
+    let parts: string[] = Array.isArray(currentVal) ? [...currentVal] : [];
 
     if (parts.includes(dbVal)) {
       parts = parts.filter(p => p !== dbVal);
@@ -665,7 +665,7 @@ export class StepQuestionnaireComponent {
       parts.push(dbVal);
     }
 
-    const newVal = parts.join('+');
+    const newVal = parts.length > 0 ? parts : null;
     this.updateFieldValue('fuel_type', newVal);
   }
 
