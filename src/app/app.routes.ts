@@ -20,7 +20,7 @@ export const routes: Routes = [
       },
       {
         path: 'cars/:id',
-        loadComponent: () => import('./features/cars/cars.component').then((m) => m.CarsComponent),
+        loadComponent: () => import('./features/cars/car-detail/car-detail.component').then((m) => m.CarDetailComponent),
       },
       {
         path: 'cars',

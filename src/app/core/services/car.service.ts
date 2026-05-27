@@ -299,4 +299,102 @@ export class CarService {
       return false;
     }
   }
+
+  /**
+   * Obtiene un auto por su ID, junto con todas sus fotos ordenadas.
+   */
+  async getCarById(id: string): Promise<{ car: Car; photos: PhotoRow[] } | null> {
+    this.isLoading.set(true);
+    this.error.set(null);
+    try {
+      const { data: car, error: carError } = await this.supabaseService.client
+        .from('cars')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (carError || !car) {
+        throw new Error('Auto no encontrado');
+      }
+
+      const { data: photos, error: photosError } = await this.supabaseService.client
+        .from('car_photos')
+        .select('*')
+        .eq('car_id', id)
+        .order('order', { ascending: true });
+
+      if (photosError) {
+        throw photosError;
+      }
+
+      return { car: car as Car, photos: photos as PhotoRow[] };
+    } catch (err: unknown) {
+      console.error('Error al obtener auto:', err);
+      this.error.set('No se pudo cargar el auto.');
+      return null;
+    } finally {
+      this.isLoading.set(false);
+    }
+  }
+
+  /**
+   * Actualiza los datos de un auto.
+   */
+  async updateCar(id: string, data: Partial<Car>): Promise<void> {
+    const updatePayload: CarUpdate = {
+      ...data,
+      updated_at: new Date().toISOString(),
+    };
+    
+    // Si se pasa un price_usd o price_ars, usamos updatePrice si era solo eso,
+    // o simplemente actualizamos aca.
+    const { error } = await (this.supabaseService.client
+      .from('cars') as any)
+      .update(updatePayload)
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error al actualizar auto:', error);
+      throw new Error('No se pudo actualizar el auto.');
+    }
+
+    // Actualizar localmente
+    this.cars.update((cars) =>
+      cars.map((car) =>
+        car.id === id ? { ...car, ...data } : car
+      )
+    );
+  }
+
+  /**
+   * Elimina un auto y todas sus fotos del Storage.
+   */
+  async deleteCar(id: string): Promise<void> {
+    this.isLoading.set(true);
+    this.error.set(null);
+    try {
+      // 1. Borrar las fotos del Storage
+      await this.photoService.deleteCarPhotos(id);
+
+      // 2. Borrar de la base de datos (car_photos se borra por CASCADE si esta configurado, 
+      //    pero igual borramos el auto principal)
+      const { error } = await this.supabaseService.client
+        .from('cars')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        throw error;
+      }
+
+      // 3. Actualizar la lista local
+      this.cars.update(cars => cars.filter(c => c.id !== id));
+    } catch (err: unknown) {
+      console.error('Error al eliminar auto:', err);
+      this.error.set('No se pudo eliminar el auto.');
+      throw new Error('No se pudo eliminar el auto.');
+    } finally {
+      this.isLoading.set(false);
+    }
+  }
 }

@@ -90,4 +90,41 @@ export class PhotoService {
 
     return urls;
   }
+
+  /**
+   * Elimina todas las fotos asociadas a un auto del Storage.
+   */
+  async deleteCarPhotos(carId: string): Promise<void> {
+    const bucketName = 'car-photos';
+    
+    try {
+      // 1. Listar archivos en la carpeta del auto
+      const { data: files, error: listError } = await this.supabaseService.client.storage
+        .from(bucketName)
+        .list(carId);
+
+      if (listError) {
+        throw new Error(`Error al listar fotos para borrar: ${listError.message}`);
+      }
+
+      if (!files || files.length === 0) {
+        return; // No hay fotos para borrar
+      }
+
+      // 2. Armar las rutas para eliminar
+      const pathsToDelete = files.map(f => `${carId}/${f.name}`);
+
+      // 3. Eliminar archivos
+      const { error: removeError } = await this.supabaseService.client.storage
+        .from(bucketName)
+        .remove(pathsToDelete);
+
+      if (removeError) {
+        throw new Error(`Error al borrar archivos del storage: ${removeError.message}`);
+      }
+    } catch (err: unknown) {
+      console.error('Error en deleteCarPhotos:', err);
+      throw err;
+    }
+  }
 }
