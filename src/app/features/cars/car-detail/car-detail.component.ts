@@ -8,6 +8,8 @@ import { SettingsService } from '../../../core/services/settings.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { Car, CarStatus } from '../../../core/models/car.model';
 import { Database } from '../../../core/models/supabase.types';
+import { SupabaseService } from '../../../core/services/supabase.service';
+import { PhotoService } from '../../../core/services/photo.service';
 
 type PhotoRow = Database['public']['Tables']['car_photos']['Row'];
 
@@ -100,15 +102,24 @@ type PhotoRow = Database['public']['Tables']['car_photos']['Row'];
               </svg>
             </div>
           </div>
+          <button *ngIf="photos().length > 0 && !carService.isLoading()" (click)="promptDeletePhoto()" class="absolute top-4 right-4 p-2 bg-black/50 text-white rounded-full hover:bg-black/70 transition-colors z-10" title="Eliminar foto">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+          </button>
         </div>
         <!-- Thumbnails -->
-        <div class="flex gap-2 p-2 overflow-x-auto bg-gray-900 hide-scrollbar" *ngIf="photos().length > 1">
+        <div class="flex gap-2 p-2 overflow-x-auto bg-gray-900 hide-scrollbar" *ngIf="photos().length > 0">
           <button *ngFor="let p of photos(); let i = index" 
                   (click)="scrollToPhoto(i)"
                   class="w-16 h-12 shrink-0 rounded overflow-hidden border-2 transition-colors focus:outline-none"
                   [ngClass]="i === currentPhotoIndex() ? 'border-indigo-500' : 'border-transparent opacity-60'">
             <img [src]="p.url" class="w-full h-full object-cover" alt="Thumbnail">
           </button>
+          
+          <!-- Botón de agregar foto -->
+          <button (click)="fileInput.click()" [disabled]="carService.isLoading()" class="w-16 h-12 shrink-0 rounded flex items-center justify-center border-2 border-dashed border-gray-600 hover:border-gray-400 hover:bg-gray-800 transition-colors disabled:opacity-50">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+          </button>
+          <input type="file" #fileInput multiple accept="image/*" class="hidden" (change)="uploadPhotos($event)">
         </div>
 
         <div class="p-4 bg-white mb-2 shadow-xs">
@@ -142,6 +153,20 @@ type PhotoRow = Database['public']['Tables']['car_photos']['Row'];
 
         <!-- Editable Details -->
         <div class="bg-white px-4 py-2 shadow-xs mb-2">
+
+          <!-- Marca -->
+          <div class="flex items-center justify-between py-3 border-b border-gray-100">
+            <span class="text-sm text-gray-500 font-medium w-1/3">Marca</span>
+            <input type="text" [ngModel]="car()!.brand" (ngModelChange)="updateField('brand', $event)" [ngModelOptions]="{updateOn: 'blur'}" [disabled]="carService.isLoading()" class="text-right text-sm text-slate-700 font-bold w-full focus:outline-none focus:ring-0 bg-transparent disabled:opacity-60">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-400 ml-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+          </div>
+
+          <!-- Modelo -->
+          <div class="flex items-center justify-between py-3 border-b border-gray-100">
+            <span class="text-sm text-gray-500 font-medium w-1/3">Modelo</span>
+            <input type="text" [ngModel]="car()!.model" (ngModelChange)="updateField('model', $event)" [ngModelOptions]="{updateOn: 'blur'}" [disabled]="carService.isLoading()" class="text-right text-sm text-slate-700 font-bold w-full focus:outline-none focus:ring-0 bg-transparent disabled:opacity-60">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-400 ml-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+          </div>
           
           <!-- Price USD -->
           <div class="flex items-center justify-between py-3 border-b border-gray-100" *ngIf="settingsService.settings()?.currencies?.includes('USD')">
@@ -263,7 +288,20 @@ type PhotoRow = Database['public']['Tables']['car_photos']['Row'];
             <button (click)="confirmSold()" [disabled]="carService.isLoading()" class="flex-1 h-12 rounded-xl font-bold bg-indigo-600 text-white active:bg-indigo-700 disabled:opacity-50 transition-all">Confirmar</button>
           </div>
         </div>
+        <!-- Delete Photo Confirmation Bottom Sheet -->
+      <div *ngIf="showDeletePhotoConfirm()" class="fixed inset-0 z-50 flex flex-col justify-end">
+        <div class="absolute inset-0 bg-slate-950/60 backdrop-blur-xs animate-fade-in" (click)="showDeletePhotoConfirm.set(false)"></div>
+        <div class="bg-white rounded-t-3xl p-6 relative z-10 max-w-screen-sm w-full mx-auto shadow-xl">
+          <h3 class="text-xl font-bold text-gray-900 mb-2">¿Eliminar esta foto?</h3>
+          <p class="text-slate-500 text-sm mb-6 font-medium">Esta acción no se puede deshacer.</p>
+          <div class="flex gap-3">
+            <button (click)="showDeletePhotoConfirm.set(false)" class="flex-1 h-12 rounded-xl font-bold bg-slate-100 text-slate-700 active:bg-slate-200 transition-all">Cancelar</button>
+            <button (click)="confirmDeletePhoto()" [disabled]="carService.isLoading()" class="flex-1 h-12 rounded-xl font-bold bg-red-600 text-white active:bg-red-700 disabled:opacity-50 transition-all">Eliminar</button>
+          </div>
+        </div>
       </div>
+
+    </div>
 
     </div>
   `,
@@ -288,12 +326,16 @@ export class CarDetailComponent implements OnInit {
   public settingsService = inject(SettingsService);
   private toastService = inject(ToastService);
 
+  private supabaseService = inject(SupabaseService);
+  private photoService = inject(PhotoService);
+
   readonly car = signal<Car | null>(null);
   readonly photos = signal<PhotoRow[]>([]);
   readonly currentPhotoIndex = signal<number>(0);
 
   readonly showDeleteConfirm = signal<boolean>(false);
   readonly showSoldConfirm = signal<boolean>(false);
+  readonly showDeletePhotoConfirm = signal<boolean>(false);
   
   readonly isAdmin = computed(() => this.authService.userRole() === 'admin');
 
@@ -496,6 +538,87 @@ export class CarDetailComponent implements OnInit {
     const c = this.car();
     if (c) {
       await this.carService.shareCar(c);
+    }
+  }
+
+  promptDeletePhoto() {
+    this.showDeletePhotoConfirm.set(true);
+  }
+
+  async confirmDeletePhoto() {
+    const c = this.car();
+    const currentPhotos = this.photos();
+    const idx = this.currentPhotoIndex();
+    const photoToDelete = currentPhotos[idx];
+
+    if (c && photoToDelete) {
+      this.carService.isLoading.set(true);
+      try {
+        const { error } = await this.supabaseService.client
+          .from('car_photos')
+          .delete()
+          .eq('id', photoToDelete.id);
+
+        if (error) throw error;
+
+        // Si eliminamos la portada actual (order = 0), intentamos hacer que otra foto sea order = 0 (por simplicidad, actualizamos todo)
+        // Refresh completo del auto
+        await this.loadCar(c.id);
+        this.currentPhotoIndex.set(Math.max(0, idx - 1));
+        this.toastService.show('Foto eliminada');
+        
+        // Refresh lista global para actualizar portadas
+        this.carService.getCars();
+      } catch (e) {
+        console.error(e);
+        this.toastService.show('Error al eliminar foto', 'error');
+      } finally {
+        this.carService.isLoading.set(false);
+        this.showDeletePhotoConfirm.set(false);
+      }
+    }
+  }
+
+  async uploadPhotos(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (!input.files || input.files.length === 0) return;
+    const files = Array.from(input.files);
+    const c = this.car();
+
+    if (c) {
+      this.carService.isLoading.set(true);
+      try {
+        const currentPhotos = this.photos();
+        const maxOrder = currentPhotos.reduce((max, p) => Math.max(max, p.order), -1);
+
+        // Subir a storage
+        const blobs = await Promise.all(files.map(f => this.photoService.compressImage(f)));
+        const urls = await this.photoService.uploadPhotos(c.id, blobs);
+
+        // Insertar en bd
+        const inserts = urls.map((url, i) => ({
+          car_id: c.id,
+          url,
+          order: maxOrder + 1 + i,
+          created_at: new Date().toISOString()
+        }));
+
+        const { error } = await (this.supabaseService.client
+          .from('car_photos') as any)
+          .insert(inserts);
+
+        if (error) throw error;
+
+        // Recargar info
+        await this.loadCar(c.id);
+        this.toastService.show('Fotos subidas correctamente');
+      } catch (e) {
+        console.error(e);
+        this.toastService.show('Error al subir fotos', 'error');
+      } finally {
+        this.carService.isLoading.set(false);
+        input.value = ''; // Reset input
+      }
     }
   }
 }

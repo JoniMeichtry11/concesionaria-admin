@@ -445,8 +445,8 @@ export class StepQuestionnaireComponent {
         const fieldConf = confidence ? (confidence as any)[q.field] : 'low';
         
         // Si el nivel de confianza de Gemini es alto (high), no lo ponemos en la cola.
-        // Se autoconfirmará en el estado del auto.
-        if (fieldConf !== 'high') {
+        // Excepto para marca y modelo, que el usuario siempre debe poder revisar y editar si la IA se equivocó.
+        if (q.field === 'brand' || q.field === 'model' || fieldConf !== 'high') {
           queue.push({
             ...q,
             confidence: fieldConf,
