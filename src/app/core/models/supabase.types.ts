@@ -90,6 +90,7 @@ export interface Database {
           whatsapp_number: string
           currencies: string[]
           ars_rate: number | null
+          ars_rate_updated_at: string | null
         }
         Insert: {
           id?: string
@@ -98,6 +99,7 @@ export interface Database {
           whatsapp_number: string
           currencies?: string[]
           ars_rate?: number | null
+          ars_rate_updated_at?: string | null
         }
         Update: {
           id?: string
@@ -106,6 +108,7 @@ export interface Database {
           whatsapp_number?: string
           currencies?: string[]
           ars_rate?: number | null
+          ars_rate_updated_at?: string | null
         }
       }
       user_roles: {
